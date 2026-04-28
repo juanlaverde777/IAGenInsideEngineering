@@ -1,0 +1,167 @@
+# SOLUCION.md — Problema #2: Tienda Virtual
+
+## 1. Identificar patrones
+
+En el código se están utilizando dos patrones de diseño:
+
+### a) Factory / Abstract Factory
+Se ve en la clase `PaymentFactory`, que se encarga de crear dos objetos relacionados:
+- `PaymentMethod`
+- `PaymentValidator`
+
+Esto permite separar la lógica de creación de la lógica de uso.  
+En este caso, yo considero que este patrón sí es adecuado, porque cada tipo de pago puede tener su propia forma de validarse y procesarse.
+
+### b) Observer
+Se ve en:
+- `PaymentSubject`
+- `PaymentObserver`
+- `ECIPayment`
+- `Inventory`
+- `Facturation`
+- `Notification`
+- `PaymentEventObserver`
+
+Este patrón también es adecuado, porque después de procesar un pago se deben ejecutar acciones distintas sin acoplar todo dentro de una sola clase.  
+Así, el sistema puede notificar éxito o fallo, actualizar inventario y generar factura sin mezclar esas responsabilidades con el proceso principal del pago.
+
+### ¿Hay que cambiar alguno?
+Yo no cambiaría los patrones principales, porque ambos encajan bien con el problema.  
+Lo único que sí ajustaría es la organización de los observers: `PaymentEventObserver` funciona como un observador coordinador, así que no conviene registrar al mismo tiempo `Inventory`, `Facturation` y `Notification` junto con él si eso provoca duplicación de acciones.
+
+---
+
+## 2. Completar implementación
+
+Para que el código respete correctamente los patrones usados, hacen falta o deben estar bien definidos estos elementos:
+
+### Base del patrón Factory
+- `PaymentMethod`  
+  Clase base abstracta o interfaz que contiene los datos comunes del pago como:
+  - `amount`
+  - `customerId`
+  - `description`
+  - `transactionId`
+  - `timestamp`
+  - `status`
+
+- `PaymentFactory`  
+  Interfaz o clase abstracta que debe crear:
+  - `createPaymentMethod(...)`
+  - `createValidator()`
+
+- `PaymentValidator`  
+  Interfaz encargada de validar un objeto `PaymentMethod`.
+
+### Base del patrón Observer
+- `PaymentSubject`  
+  Interfaz con métodos como:
+  - `addObserver(...)`
+  - `removeObserver(...)`
+
+- `PaymentObserver`  
+  Interfaz con métodos como:
+  - `onPaymentSuccess(...)`
+  - `onPaymentFailed(...)`
+
+### Clases concretas que también deben existir
+- Factories concretas para cada tipo de pago, por ejemplo:
+  - `CryptoPaymentFactory`
+  - `CardPaymentFactory`
+  - `CashPaymentFactory`
+  - `BankTransferPaymentFactory`
+
+- Validators concretos, por ejemplo:
+  - `CryptoPaymentValidator`
+  - `CardPaymentValidator`
+  - `CashPaymentValidator`
+  - `BankTransferPaymentValidator`
+
+- Entidades y soporte del sistema:
+  - `Product`
+  - `PaymentStatus` como enum
+
+---
+
+## 3. Validar diagrama de contexto
+
+El diagrama de contexto es suficiente solo si muestra claramente:
+
+- el cliente o usuario,
+- `ECIPayment`,
+- la fábrica de pagos,
+- el validador,
+- el método de pago,
+- y los observadores que reaccionan al pago.
+
+Si el diagrama solo muestra el flujo general del pago pero no incluye la creación del método de pago, la validación y los observers, entonces está incompleto.
+
+Yo no modificaría los diagramas si ya reflejan esos componentes.  
+Si no los muestran, solo dejaría documentado en el `SOLUCION.md` que faltan esas relaciones en el contexto.
+
+---
+
+## 4. Identificar errores
+
+Los errores que hacían que el código no compilara eran principalmente de estructura y sintaxis, no de lógica.
+
+### Errores encontrados
+- Había una declaración duplicada de `package`.
+- El import de `AtomicInteger` estaba mal ubicado.
+- Había una llave `}` extra.
+- Parecía que varias clases estaban pegadas en el mismo archivo.
+- Si varias clases públicas estaban en un solo archivo `.java`, Java no lo permite.
+
+### ¿Por qué no compilaba?
+Porque Java exige:
+- un solo `package` por archivo,
+- imports bien ubicados,
+- llaves balanceadas,
+- y una estructura correcta de archivos, donde cada clase pública esté en su propio archivo con el mismo nombre.
+
+Además, si faltaban clases o interfaces como `PaymentMethod`, `PaymentFactory`, `PaymentValidator`, `PaymentObserver`, `PaymentSubject`, `Product` o `PaymentStatus`, también aparecían errores de compilación por referencias no definidas.
+
+---
+
+## 5. Corregir código
+
+Las correcciones necesarias para que el sistema funcione correctamente fueron:
+
+- separar cada clase en su archivo correspondiente,
+- corregir los `package`,
+- ordenar los `import`,
+- quitar llaves sobrantes,
+- definir las interfaces y clases base que usaban los patrones,
+- mantener el proceso de pago desacoplado de las acciones posteriores,
+- y dejar a `PaymentEventObserver` como coordinador de las acciones posteriores al pago.
+
+### Observación importante
+No conviene registrar dos veces la misma reacción al evento.  
+Si `PaymentEventObserver` ya llama a `Inventory`, `Facturation` y `Notification`, entonces no debería registrarse al mismo tiempo cada uno de ellos como observers independientes, porque se repetirían las acciones.
+
+---
+
+## Prompts que usé para corregir el código
+
+### Prompt 1
+Revisa este proyecto y dime exactamente qué clases, interfaces y archivos faltan para que el código compile y respete el patrón de diseño que está usando.
+
+### Prompt 2
+Identifica los errores de sintaxis y estructura del código Java, corrige los `package`, los `import` y las llaves, y ordénalo como si cada clase estuviera en su archivo correspondiente.
+
+### Prompt 3
+Analiza qué patrón de diseño representa cada clase y dime si la implementación es correcta o si hay responsabilidades duplicadas que deberían simplificarse.
+
+### Prompt 4
+Completa la implementación del sistema de tienda virtual respetando los patrones Factory y Observer, sin cambiar la lógica general del proyecto.
+
+### Prompt 5
+Corrige el flujo para que el proceso de pago notifique una sola vez los eventos posteriores y no se repitan la facturación, el inventario y las notificaciones.
+
+---
+
+## Conclusión
+
+En resumen, el proyecto usa bien los patrones Factory y Observer.  
+Los errores principales estaban en la organización del código y en la falta de algunas clases base.  
+Con la estructura correcta, el sistema queda coherente, compilable y alineado con el diseño esperado.
